@@ -1,0 +1,7 @@
+*.sw[o,p]
+.DS_Store
+build/*
+
+*.ipynb
+.ipynb_checkpoints/*
+exps.csv
