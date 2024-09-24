@@ -4,4 +4,4 @@ build/*
 
 *.ipynb
 .ipynb_checkpoints/*
-exps.csv
+*.csv
