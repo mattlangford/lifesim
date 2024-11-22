@@ -38,7 +38,8 @@ fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
 row = 1
 
 def plot(field, **kwargs):
-    fig.add_trace(go.Scatter(x=exp["year"], y=exp[field], 
+    sign = -1 if "expense" in field or "spending" in field else 1
+    fig.add_trace(go.Scatter(x=exp["year"], y=sign * exp[field], 
                              mode='lines', name=field,
                              line=kwargs),
                   row=row, col=1)
@@ -46,7 +47,6 @@ def plot(field, **kwargs):
 
 plot("market_value", color="blue")
 plot("retirement_value", color="orange")
-
 
 row = 2
 plot("job_income")
@@ -67,6 +67,6 @@ fig.update_layout(
 
 fig.update_xaxes(title_text="Year", row=2, col=1)
 fig.update_yaxes(title_text="Value", row=1, col=1)
-fig.update_yaxes(title_text="Value", row=2, col=1)
+fig.update_yaxes(title_text="Weekly $", row=2, col=1)
 
 fig.show()

@@ -15,24 +15,27 @@ parser.add_argument('--experiment-count', type=int, default=1000, help="How many
 args = parser.parse_args()
 
 INSURANCE = 12 * 500
-CAR_VALUE = 60000
+CAR_VALUE = 90000
 
-def run_models(work_years, spend_rate, child_offset, car_offset, spend_base, seed=42):
+def run_models(work_years, spend_rate, child_offset, interchild_offset, car_offset, spend_base, seed=42):
     spending_amount = 12 * spend_base + INSURANCE
     salary = args.current_salary - INSURANCE
 
     command = "./build/simulate "
     command += f"--market-amount {args.current_market_value:.2f} "
     command += f"--retirement-amount {args.current_retirement_value:.2f} "
-    command += f"--retirement-start {59 - 28} "
+    # command += f"--retirement-start {59 - 29} "
     command += f"--retirement-limit {24000} "
     command += f"--child-start {child_offset:.2f} "
     command += f"--child-total {485000 + 4 * 11260} " # Base cost, plus college
+    command += f"--child-duration {18} "
+    command += f"--child2-start {child_offset + interchild_offset:.2f} "
+    command += f"--child2-total {485000 + 4 * 11260} " # Base cost, plus college
+    command += f"--child2-duration {18} "
     command += f"--car-down {CAR_VALUE * 0.1:.2f} " # 10% down
     command += f"--car-total {CAR_VALUE * 0.9:.2f} "
     command += f"--car-start {car_offset} "
     command += f"--car-duration {3} "
-    command += f"--child-duration {18} "
     command += f"--job-salary {salary:.2f} "
     command += f"--job-duration {work_years:.2f} "
     command += f"--job-rate {0.05} "
@@ -49,6 +52,7 @@ def run_models(work_years, spend_rate, child_offset, car_offset, spend_base, see
     exp["work_years"] = work_years
     exp["spend_rate"] = spend_rate
     exp["child_offset"] = child_offset
+    exp["interchild_offsete"] = interchild_offset
     exp["car_offset"] = car_offset
     exp["spend_base"] = spend_base
 
@@ -71,14 +75,15 @@ start = time.time()
 exps = []
 datapoints = args.experiment_count
 for e in range(datapoints):
-    work_years = random.uniform(0, 15)
-    spend_rate = random.uniform(20, 500)
-    spend_base = random.uniform(3000, 7000)
+    work_years = random.uniform(0, 12)
+    spend_rate = random.uniform(10, 200)
+    spend_base = random.uniform(3000, 6000)
     child_offset = random.uniform(1, 10)
+    interchild_offset = random.uniform(1, 5)
     car_offset = random.uniform(5, 10)
     seed = random.uniform(0.0, 1.0)
 
-    exps.append(run_models(work_years, spend_rate, child_offset, car_offset, spend_base, seed))
+    exps.append(run_models(work_years, spend_rate, child_offset, interchild_offset, car_offset, spend_base, seed))
 
     if e % 100 == 0:
         idx = args.sim_count * e

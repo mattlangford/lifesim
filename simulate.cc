@@ -376,6 +376,20 @@ std::set<std::unique_ptr<T>> clone_set(const std::set<std::unique_ptr<T>>& input
     }
     return output;
 }
+template <typename T>
+std::vector<std::unique_ptr<T>> clone_vector(const std::vector<std::unique_ptr<T>>& input) {
+    std::vector<std::unique_ptr<T>> output;
+    output.reserve(input.size());
+    for (const auto& in : input) {
+        // Since clone() returns a ModelBase*, we need to up convert that back up a T* to return.
+        if (T* ptr = dynamic_cast<T*>(in->clone().release())) {
+            output.emplace_back(std::unique_ptr<T>(ptr));
+        } else {
+            throw std::runtime_error("Unable to cast T::clone() return to T*");
+        }
+    }
+    return output;
+}
 
 int main(int argc, const char** argv) {
     std::cout << std::setprecision(2);
@@ -419,11 +433,13 @@ int main(int argc, const char** argv) {
     std::set<ModelBase::Ptr> base_expense_models;
     base_expense_models.insert(std::make_unique<Spending>("spending", parser));
     base_expense_models.insert(std::make_unique<Cost>("child", parser));
+    base_expense_models.insert(std::make_unique<Cost>("child2", parser));
     base_expense_models.insert(std::make_unique<Cost>("car", parser));
 
-    std::set<FundBase::Ptr> base_market_models;
-    base_market_models.insert(std::make_unique<MarketFund>("retirement", parser));
-    base_market_models.insert(std::make_unique<MarketFund>("market", parser));
+    // In the order that funds will be contributed to  (reverse withdrawl order)
+    std::vector<FundBase::Ptr> base_market_models;
+    base_market_models.push_back(std::make_unique<MarketFund>("market", parser));
+    base_market_models.push_back(std::make_unique<MarketFund>("retirement", parser));
 
     parser.parse(argc, argv);
 
@@ -449,7 +465,7 @@ int main(int argc, const char** argv) {
         // Clone the models so we can mutate them.
         std::set<ModelBase::Ptr> income_models = clone_set(base_income_models);
         std::set<ModelBase::Ptr> expense_models = clone_set(base_expense_models);
-        std::set<FundBase::Ptr> market_models = clone_set(base_market_models);
+        std::vector<FundBase::Ptr> market_models = clone_vector(base_market_models);
 
         // Set the offset percent for this simulation.
         std::uniform_real_distribution<double> dist(0.0, 1.0);
@@ -501,17 +517,22 @@ int main(int argc, const char** argv) {
             // How much we can invest into market account and need to spend from market accounts
             double to_invest = std::max(total_income - total_expenses, 0.0);
             double to_spend = std::max(total_expenses - total_income, 0.0);
-            for (auto& market : market_models) {
-                market->update_to(year);
+            std::vector<double> market_contributed;
+            if (verbose) { market_contributed.resize(market_models.size()); }
+            for (size_t i = 0; i < market_models.size(); ++i) {
+                size_t reverse_i = market_models.size() - 1 - i;
+                market_models[reverse_i]->update_to(year);
 
-                double contributed = market->buy(to_invest);
+                double contributed = market_models[reverse_i]->buy(to_invest);
                 to_invest -= contributed;
-
-                double spend = market->sell(to_spend);
+                market_contributed[reverse_i] = contributed;
+            }
+            for (size_t i = 0; i < market_models.size(); ++i) {
+                double spend = market_models[i]->sell(to_spend);
                 to_spend -= spend;
 
                 if (verbose) {
-                    std::cout << contributed << "," << spend << "," << market->amount() << ",";
+                    std::cout << market_contributed[i] << "," << spend << "," << market_models[i]->amount() << ",";
                 }
             }
 
